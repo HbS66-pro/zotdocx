@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zotdocx"
-version = "0.3.0"
+version = "0.3.1"
 description = "Repair Zotero citation fields in .docx files: GB/T 7714, IEEE, Nature, Vancouver"
 readme = "README.md"
 license = "MIT"

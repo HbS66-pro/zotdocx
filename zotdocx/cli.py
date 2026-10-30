@@ -18,7 +18,7 @@ from .library import Library, default_db
 from .repair import repair_xml
 from .patch import omni_path, inspect, apply_patch, read_inner, auto_patch, MARKER
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 # 上标那套（Word 宏）只在仓库里有，pip 装的包里没有，所以提示给完整链接
 SUP_DOC = 'https://github.com/HbS66-pro/zotdocx/blob/main/docs/word-superscript.zh-CN.md'
