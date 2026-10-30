@@ -443,7 +443,7 @@ def build_parser():
     p.set_defaults(func=cmd_repair)
 
     p = sub.add_parser('patch', help='检查/重打 Zotero 的 omni.ja 补丁（不携带任何 Zotero 代码）',
-                       epilog='补丁片段与三步做法见仓库里的 docs/integration-patch.md')
+                       epilog='补丁片段与用法见仓库里的 docs/integration-patch.md')
     p.add_argument('--zotero-dir', metavar='DIR', required=True, help='Zotero 程序目录（含 app/omni.ja）')
     p.add_argument('--auto', action='store_true',
                    help='自动改写 integration.js（插入调用 + 追加片段），不用手工编辑')
