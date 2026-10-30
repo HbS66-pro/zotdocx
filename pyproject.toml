@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zotdocx"
-version = "0.2.1"
+version = "0.3.0"
 description = "Repair Zotero citation fields in .docx files: GB/T 7714, IEEE, Nature, Vancouver"
 readme = "README.md"
 license = "MIT"
@@ -27,6 +27,9 @@ classifiers = [
 Homepage = "https://github.com/HbS66-pro/zotdocx"
 Repository = "https://github.com/HbS66-pro/zotdocx"
 Issues = "https://github.com/HbS66-pro/zotdocx/issues"
+
+[tool.setuptools.package-data]
+zotdocx = ["data/*.js"]
 
 [project.scripts]
 zotdocx = "zotdocx.cli:main"
