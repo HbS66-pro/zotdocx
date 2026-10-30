@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zotdocx"
+version = "0.1.0"
+description = "Zotero manuscript-side checks and repairs for .docx"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+dependencies = ["lxml"]
+keywords = ["zotero", "docx", "citation", "word", "bibliography", "gbt7714"]
+authors = [{ name = "zotdocx contributors" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Markup",
+]
+
+[project.scripts]
+zotdocx = "zotdocx.cli:main"
