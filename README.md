@@ -6,7 +6,7 @@
 
 `zotdocx` repairs Zotero citation fields inside a `.docx`. It edits the file only: it does not touch the Zotero library, and it does not re-typeset the document.
 
-It is built for numeric citation styles, where a citation is a number that has to stay in step with the tables, figures and notes around it — **GB/T 7714, IEEE, Nature, Vancouver**. Author–date styles such as APA or Harvard have no number to reorder, so `renumber` and `lift` do not apply to them.
+It works with any Zotero citation style. `renumber` and `lift` only apply to numeric styles — GB/T 7714, IEEE, Nature, Vancouver and any other numbered CSL style — because they reorder numbers; author–date styles such as APA or Harvard have no numbers to reorder, so those two are skipped. `status`, `heal` and `repair` work with any style.
 
 ## Quick start
 
@@ -38,7 +38,7 @@ zotdocx renumber 论文.docx        # dry run, prints what would change
 zotdocx renumber 论文.docx --apply
 ```
 
-Console labels are Chinese in this release. Numbers, exit codes and `--json` output are the parts meant for scripts.
+The console output is in Chinese; numbers, exit codes and `--json` are the stable interface for scripts.
 
 ## What it fixes
 

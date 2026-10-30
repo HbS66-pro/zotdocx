@@ -8,7 +8,7 @@
 
 `zotdocx` 直接修 `.docx` 里的引用域：只动这一个文件，不碰你的文献库，也不重新排版。
 
-它面向数字制样式（GB/T 7714、IEEE、Nature、Vancouver），引用是一个必须和表格、图题、表注保持一致的编号。著者-出版年样式（APA、Harvard）没有编号可排，`renumber` 和 `lift` 用不上。
+任何 Zotero 样式都能用。其中 `renumber` 和 `lift` 只对数字制有意义——GB/T 7714、IEEE、Nature、Vancouver 以及其它编号制 CSL 样式——因为它们排的是编号；著者-出版年样式（APA、Harvard）没有编号可排，这两个命令跳过，`status`、`heal`、`repair` 照常可用。
 
 ## 快速开始
 
