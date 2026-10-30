@@ -20,8 +20,10 @@ BODY, TABLE, CAPTION, NOTE, BIBLIO = 'body', 'table', 'caption', 'note', 'biblio
 CTX_CN = {BODY: '正文', TABLE: '表格', CAPTION: '图题表题', NOTE: '表注图注', BIBLIO: '参考文献表'}
 
 NUM_RE = re.compile(r'\[\s*(\d+(?:\s*[,，\-–]\s*\d+)*)\s*\]')
-CAP_RE = re.compile(r'^\s*(图|表)\s*\d')
-NOTE_RE = re.compile(r'^\s*注\s*[:：]')
+CAP_RE = re.compile(r'^\s*(图|表|Table|Figure|Fig\.?|Tab\.)\s*\d', re.I)
+NOTE_RE = re.compile(r'^\s*(注|Note|Notes)\s*[:：]', re.I)
+BIBLIO_HEAD_RE = re.compile(
+    r'^\s*(参考文献|References?|Bibliography|Literature Cited|Works Cited)\s*$', re.I)
 
 
 @dataclass
@@ -154,7 +156,7 @@ class Document:
         self.para_text = texts
         biblio_from = len(texts)
         for i, t in enumerate(texts):
-            if re.match(r'^\s*参考文献\s*$', t):
+            if BIBLIO_HEAD_RE.match(t):
                 biblio_from = i
                 break
         for i, t in enumerate(texts):

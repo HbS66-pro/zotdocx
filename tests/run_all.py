@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TESTS = ['test_heal.py', 'test_renumber.py', 'test_lift.py',
+TESTS = ['test_heal.py', 'test_renumber.py', 'test_lift.py', 'test_en.py',
          'test_repair.py', 'test_patch.py', 'audit.py']
 
 
