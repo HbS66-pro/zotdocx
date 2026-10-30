@@ -4,7 +4,41 @@
 
 [English](README.md) | **中文**
 
-修复 Word 文档中 Zotero 引注域的命令行工具。只处理 `.docx` 内的引用域，不修改 Zotero 文献库，不重新排版。
+正文里删掉一条引用，全文编号都变了，可表格、图题、表注里的 `[12]` 还是旧号——这是 Zotero 在 Word 里最容易出错的地方。
+
+`zotdocx` 直接修 `.docx` 里的引用域：只动这一个文件，不碰你的文献库，也不重新排版。
+
+它面向数字制样式（GB/T 7714、IEEE、Nature、Vancouver），引用是一个必须和表格、图题、表注保持一致的编号。著者-出版年样式（APA、Harvard）没有编号可排，`renumber` 和 `lift` 用不上。
+
+## 快速开始
+
+```bash
+pip install zotdocx
+zotdocx demo
+```
+
+`demo` 在当前目录生成 `demo.docx`（合成文档，两个引注域，几处故意留的毛病），然后打印一次只读体检和一次 `renumber` 干跑：
+
+```
+demo.docx
+  部件 7 个；document.xml 0.00 MB
+  样式 未记录
+
+域      3 = 引注 2 + 书目 1 + 其他 0
+        跨段落：引注 0 · 书目 0
+        位置：正文 2
+条目    2 个
+编号   显示 1–2；同条目多编号 0；单条目编号不符 2；多条目编号不符 0
+纯文本 正文 1 · 表格 1 · 表注图注 1 · 图题表题 1
+```
+
+换成自己的稿子：
+
+```bash
+zotdocx status 论文.docx          # 只读体检；有问题时退出码 1
+zotdocx renumber 论文.docx        # 干跑，只打印会改什么
+zotdocx renumber 论文.docx --apply
+```
 
 ## 处理的问题
 
@@ -19,6 +53,7 @@
 
 | 命令 | 功能 |
 |---|---|
+| `demo` | 生成合成示例文档并检查一遍 |
 | `status` | 检查域结构、条目、编号与纯文本引用分布 |
 | `heal` | 修复跨段落引注域，对齐域内编号与显示编号 |
 | `renumber` | 按首次引用顺序重排编号，同步表格、图题、表注中的纯文本数字 |
@@ -29,41 +64,28 @@
 ## 安装
 
 ```bash
-python -m pip install -e .
+pip install zotdocx
 ```
 
-需要 Python 3.9 及以上，依赖 `lxml`。
+需要 Python 3.9 及以上，唯一依赖是 `lxml`。从源码装用 `pip install .`。
+
+`repair` 和 `status` 的断链检查需要 `zotero.sqlite`，按这个顺序找：`--zotero-db`、环境变量 `ZOTERO_DB`、`~/Zotero/zotero.sqlite`。都没找到时，文档内的检查照常做，断链检查跳过。
 
 ## 使用
 
-状态检查为只读操作：
+写入类命令默认只干跑，加 `--apply` 才落盘：
 
 ```bash
-zotdocx status 稿件.docx --zotero-db <zotero.sqlite 路径>
-```
-
-```
-稿件.docx
-  域      115 = 引注 114 + 书目 1 + 其他 0
-  条目    76 个
-  编号    显示 1–76；同条目多编号 0；单条目编号不符 2
-  纯文本 表格 27 · 表注图注 5 · 参考文献表 75
-```
-
-存在未通过的检查项时退出码为 1，无问题时为 0。
-
-写入操作默认只做检查，不落盘：
-
-```bash
-zotdocx heal     稿件.docx            # 输出将要修改的内容
+zotdocx heal     稿件.docx            # 只打印将要修改的内容
 zotdocx heal     稿件.docx --apply    # 写入，原文件备份为 *.bak_<时间戳>
-zotdocx renumber 稿件.docx --apply
 zotdocx lift     稿件.docx --apply --out 新文件.docx
 ```
 
+`status` 发现问题时退出码为 1，无问题为 0；用法错误和文件错误为 2。
+
 ## 处理范围
 
-- 仅替换 docx 包内的 `word/document.xml`，其他部件保持不变。
+- 仅替换 docx 包内的 `word/document.xml`，其他部件逐字节保留。
 - 表格、图题、表注中的编号保持纯文本，`renumber` 只同步数字，不转为活域。
 - 图题表题、表注、参考文献标题同时识别中英文写法（图 / 表 / 注 / 参考文献，Table / Figure / Note / References）。
 - 文献库只读，查询前复制到临时目录。
@@ -71,11 +93,11 @@ zotdocx lift     稿件.docx --apply --out 新文件.docx
 
 ## 限制
 
-- 仅支持数字型 CSL 样式（如 GB/T 7714、IEEE、Nature、Vancouver）。著者-出版年样式（APA、Harvard）没有编号可排，`renumber` 与 `lift` 不适用。
+- 仅支持数字型 CSL 样式。著者-出版年样式没有编号可排。
 - 仅在 Windows 与 Word 环境验证。
 - 编号被拆分为多个 run 时不处理，列在输出中。
 - `repair` 仅依据 item key 与完整题名匹配，无法匹配时报告，不作推测。
-- `patch` 需要自行提供修补后的 `integration.js`。
+- `patch` 需要自行提供修补后的 `integration.js`，步骤见 [docs/integration-patch.zh-CN.md](docs/integration-patch.zh-CN.md)。
 
 ## 测试
 
@@ -83,7 +105,11 @@ zotdocx lift     稿件.docx --apply --out 新文件.docx
 python tests/run_all.py
 ```
 
-测试使用 `tests/make_fixture.py` 生成的合成文档（中英文各一份），不含真实论文或文献库内容。
+测试使用测试进程内生成的合成文档（中英文各一份），不含真实论文或文献库内容。同一套测试在 GitHub Actions 上跑 Python 3.9、3.11、3.13。
+
+## 高级：Zotero 集成补丁
+
+如果 Zotero 报**「无法删除范围」**、引注域反复损坏，原因在 Zotero 一侧，不在文档里。[docs/integration-patch.zh-CN.md](docs/integration-patch.zh-CN.md) 讲了一个 `integration.js` 片段和用 `zotdocx patch` 打上去的三步。它是可选的，改的是 Zotero 而不是文档，Zotero 升级会把它覆盖掉。
 
 ## 许可
 

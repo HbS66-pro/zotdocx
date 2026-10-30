@@ -4,9 +4,43 @@
 
 **English** | [中文](README.zh-CN.md)
 
-A command-line tool for repairing Zotero citation fields in Word documents. It works on the citation fields inside a `.docx`; it does not modify the Zotero library and does not re-typeset the document.
+`zotdocx` repairs Zotero citation fields inside a `.docx`. It edits the file only: it does not touch the Zotero library, and it does not re-typeset the document.
 
-## Problems it handles
+It is built for numeric citation styles, where a citation is a number that has to stay in step with the tables, figures and notes around it — **GB/T 7714, IEEE, Nature, Vancouver**. Author–date styles such as APA or Harvard have no number to reorder, so `renumber` and `lift` do not apply to them.
+
+## Quick start
+
+```bash
+pip install zotdocx
+zotdocx demo
+```
+
+`demo` writes `demo.docx` into the current directory — a synthetic document with two citation fields and a few known defects — then prints a read-only report and a dry run of `renumber`:
+
+```
+demo.docx
+  部件 7 个；document.xml 0.00 MB
+  样式 未记录
+
+域      3 = 引注 2 + 书目 1 + 其他 0
+        跨段落：引注 0 · 书目 0
+        位置：正文 2
+条目    2 个
+编号   显示 1–2；同条目多编号 0；单条目编号不符 2；多条目编号不符 0
+纯文本 正文 1 · 表格 1 · 表注图注 1 · 图题表题 1
+```
+
+Then point it at your own file:
+
+```bash
+zotdocx status 论文.docx          # read-only report; exit code 1 if something is off
+zotdocx renumber 论文.docx        # dry run, prints what would change
+zotdocx renumber 论文.docx --apply
+```
+
+Console labels are Chinese in this release. Numbers, exit codes and `--json` output are the parts meant for scripts.
+
+## What it fixes
 
 - Citation fields split across paragraphs, with the field end in the next paragraph
 - Numbers stored in a field that disagree with the numbers shown on the page
@@ -19,6 +53,7 @@ A command-line tool for repairing Zotero citation fields in Word documents. It w
 
 | Command | What it does |
 |---|---|
+| `demo` | Write a synthetic sample document and check it |
 | `status` | Report field structure, item count, numbering consistency, plain-text citations |
 | `heal` | Repair cross-paragraph citation fields; align stored and displayed numbers |
 | `renumber` | Renumber by first citation and sync plain-text numbers in tables, captions and notes |
@@ -29,39 +64,24 @@ A command-line tool for repairing Zotero citation fields in Word documents. It w
 ## Install
 
 ```bash
-python -m pip install -e .
+pip install zotdocx
 ```
 
-Python 3.9 or later. The only dependency is `lxml`.
+Python 3.9 or later; the only dependency is `lxml`. From a checkout, `pip install .`.
+
+`repair`, and the broken-link part of `status`, need `zotero.sqlite`. It is looked up in this order: `--zotero-db`, the `ZOTERO_DB` environment variable, then `~/Zotero/zotero.sqlite`. If none is found, the document-side checks still run and the broken-link check is skipped.
 
 ## Usage
 
-`status` is read-only:
-
-```bash
-zotdocx status manuscript.docx --zotero-db <path to zotero.sqlite>
-```
-
-```
-manuscript.docx
-  域      115 = 引注 114 + 书目 1 + 其他 0
-  条目    76 个
-  编号    显示 1–76；同条目多编号 0；单条目编号不符 2
-  纯文本 表格 27 · 表注图注 5 · 参考文献表 75
-```
-
-Console labels are currently Chinese; the numbers and the exit code are what scripts should rely on.
-
-Exit code is 1 when any check fails, 0 when everything is clean.
-
-Write commands run as a dry run by default:
+Write commands are dry runs until `--apply` is given:
 
 ```bash
 zotdocx heal     manuscript.docx            # print what would change
 zotdocx heal     manuscript.docx --apply    # write, original backed up as *.bak_<timestamp>
-zotdocx renumber manuscript.docx --apply
 zotdocx lift     manuscript.docx --apply --out new.docx
 ```
+
+Exit code is 1 when `status` finds a problem, 0 otherwise, and 2 for usage or file errors.
 
 ## Scope
 
@@ -69,15 +89,15 @@ zotdocx lift     manuscript.docx --apply --out new.docx
 - Numbers in table cells, captions and notes stay plain text; `renumber` syncs the digits and never turns them into fields.
 - Caption, note and bibliography headings are recognised in both Chinese (图 / 表 / 注 / 参考文献) and English (Table / Figure / Note / References).
 - The Zotero database is opened read-only, from a temporary copy.
-- No wording changes, no layout, no conversion to final plain-text manuscript.
+- No wording changes, no layout, no conversion to a final plain-text manuscript.
 
 ## Limitations
 
-- Numeric CSL styles only (GB/T 7714, IEEE, Nature, Vancouver). Author–date styles such as APA or Harvard have no numbers to reorder, so `renumber` and `lift` do not apply.
+- Numeric CSL styles only. Author–date styles have no numbers to reorder.
 - Verified on Windows with Word only.
 - Citations split across several runs are reported, not lifted.
 - `repair` matches by item key or exact title; anything else is reported, never guessed.
-- `patch` requires a patched `integration.js` supplied by the user.
+- `patch` requires a patched `integration.js` supplied by the user. See [docs/integration-patch.md](docs/integration-patch.md).
 
 ## Tests
 
@@ -85,7 +105,11 @@ zotdocx lift     manuscript.docx --apply --out new.docx
 python tests/run_all.py
 ```
 
-Tests run against synthetic documents generated by `tests/make_fixture.py`, in Chinese and English. No real manuscript or library content is included.
+Tests run against synthetic documents built in the test process, in Chinese and English. No real manuscript or library content is included. The same suite runs on GitHub Actions for Python 3.9, 3.11 and 3.13.
+
+## Advanced: Zotero integration patch
+
+If Zotero reports **Cannot delete range** and citation fields keep breaking, the cause is on the Zotero side, not in the document. [docs/integration-patch.md](docs/integration-patch.md) describes a small snippet for `integration.js` and the three steps to apply it with `zotdocx patch`. It is optional, it modifies Zotero rather than the document, and a Zotero update overwrites it.
 
 ## License
 
