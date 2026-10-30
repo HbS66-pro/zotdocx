@@ -18,7 +18,7 @@ from .library import Library
 from .repair import repair_xml
 from .patch import omni_path, inspect, apply_patch
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 
 # ---------------- status ----------------

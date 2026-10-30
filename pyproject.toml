@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zotdocx"
-version = "0.1.0"
+version = "0.1.1"
 description = "Zotero manuscript-side checks and repairs for .docx"
 readme = "README.md"
 license = "MIT"
