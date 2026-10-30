@@ -18,7 +18,7 @@ from .library import Library, default_db
 from .repair import repair_xml
 from .patch import omni_path, inspect, apply_patch
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 
 def db_path(args):
@@ -96,6 +96,18 @@ def cmd_status(args):
 
     # ---------------- 输出 ----------------
     base = os.path.basename(args.docx)
+    bad = bool(broken) or mismatch > 0 or any(f.cross for f in items)
+    if args.json:
+        print(json.dumps({
+            'file': base,
+            'fields': {'total': len(doc.fields), 'item': len(items),
+                       'bibl': len(bibl), 'other': len(other)},
+            'cross_item': sum(1 for f in items if f.cross),
+            'items': len(ids_seen),
+            'plain': dict(plain_by_ctx),
+            'broken': {k: [str(x) for x in v] for k, v in broken.items()},
+        }, ensure_ascii=False, indent=2))
+        return 1 if bad else 0
     print(f'{base}')
     print(f'  部件 {names} 个；document.xml {len(xml.encode("utf-8")) / 1048576:.2f} MB')
     print(f'  样式 {style}')
@@ -125,18 +137,6 @@ def cmd_status(args):
         if multi_num_ids:
             print('同条目多编号的 id：', multi_num_ids[:20])
 
-    if args.json:
-        print(json.dumps({
-            'file': base,
-            'fields': {'total': len(doc.fields), 'item': len(items),
-                       'bibl': len(bibl), 'other': len(other)},
-            'cross_item': sum(1 for f in items if f.cross),
-            'items': len(ids_seen),
-            'plain': dict(plain_by_ctx),
-            'broken': {k: [str(x) for x in v] for k, v in broken.items()},
-        }, ensure_ascii=False, indent=2))
-
-    bad = bool(broken) or mismatch > 0 or any(f.cross for f in items)
     return 1 if bad else 0
 
 

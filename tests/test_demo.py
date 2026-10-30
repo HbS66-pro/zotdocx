@@ -8,9 +8,12 @@
   * renumber --apply 备份原文件，之后 status 返回 0。
 """
 import hashlib
+import io
+import json
 import os
 import sys
 import tempfile
+from contextlib import redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -38,6 +41,12 @@ def run():
     assert len(doc.items()) == 2 and len(doc.fields) == 3, '演示文档的域结构不对'
 
     assert main(['status', out]) == 1, '故意留着的编号不符应让 status 返回 1'
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        rc = main(['status', out, '--json'])
+    data = json.loads(buf.getvalue())          # --json 必须只输出 JSON，不能混人读文本
+    assert rc == 1 and data['fields']['total'] == 3, '--json 输出不可解析或字段不对'
 
     before = digest(out)
     assert main(['renumber', out]) == 0, '干跑应返回 0'
