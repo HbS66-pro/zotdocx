@@ -14,11 +14,18 @@ from .docxfile import Docx, DOC
 from .heal import heal_xml
 from .renumber import renumber_xml
 from .lift import lift_xml
-from .library import Library
+from .library import Library, default_db
 from .repair import repair_xml
 from .patch import omni_path, inspect, apply_patch
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'
+
+
+def db_path(args):
+    """--zotero-db 优先，其次 ZOTERO_DB 环境变量，再次常见安装位置；都没有返回 None。"""
+    if getattr(args, 'no_lib', False):
+        return None
+    return getattr(args, 'zotero_db', None) or default_db()
 
 
 # ---------------- status ----------------
@@ -76,7 +83,8 @@ def cmd_status(args):
         plain_by_ctx[CTX_CN.get(p.ctx, p.ctx)] += 1
 
     # 文献库
-    lib = Library(args.zotero_db) if args.zotero_db else None
+    db = db_path(args)
+    lib = Library(db) if db else None
     id_kinds = defaultdict(int)
     broken = {}
     if lib:
@@ -100,6 +108,8 @@ def cmd_status(args):
     print(f'编号   显示 {all_nums[0] if all_nums else 0}–{all_nums[-1] if all_nums else 0}'
           f'；同条目多编号 {len(multi_num_ids)}；单条目编号不符 {mismatch}；多条目编号不符 {multi_mismatch}')
     print('纯文本 ' + ' · '.join(f'{k} {v}' for k, v in plain_by_ctx.items()))
+    if lib is None and not getattr(args, 'no_lib', False):
+        print('断链    跳过（没找到 zotero.sqlite；用 --zotero-db 或 ZOTERO_DB 指一个）')
 
     if broken:
         print()
@@ -257,13 +267,20 @@ def after_problems(doc):
 
 
 def cmd_repair(args):
-    lib = Library(args.zotero_db)
+    db = db_path(args)
+    if not db:
+        print('! repair 需要 zotero.sqlite 才能判断条目还在不在')
+        print('  自动查找过：~/Zotero/zotero.sqlite')
+        print('  用 --zotero-db 指定路径，或设 ZOTERO_DB 环境变量')
+        return 2
+    lib = Library(db)
     with Docx(args.docx) as z:
         xml = z.text(DOC)
     new_xml, rep = repair_xml(xml, lib)
     _validate(new_xml)
 
     print(os.path.basename(args.docx))
+    print(f'  文献库 {db}')
     print(f'  正常条目 {rep["ok"]} 个；重连 {len(rep["relinked"])} 处；无法修复 {len(rep["unrecoverable"])} 处')
     for old, new, why in rep['relinked']:
         print(f'    重连 {old} → {new}（依据：{why}）')
@@ -331,16 +348,44 @@ def cmd_patch(args):
     return 0
 
 
+def cmd_demo(args):
+    from .demo import build
+    out = args.out
+    if os.path.exists(out) and not args.force:
+        print(f'! {out} 已存在；换一个文件名（--out），或加 --force 覆盖')
+        return 2
+    build(out)
+    print(f'已生成 {out}（合成文档：假段落 + 假引用，不含任何真实文献）')
+    print()
+    print('== status：只读体检 ==')
+    cmd_status(argparse.Namespace(docx=out, zotero_db=None, no_lib=True,
+                                  show_text=False, json=False))
+    print()
+    print('== renumber：干跑，不写盘 ==')
+    cmd_renumber(argparse.Namespace(docx=out, apply=False, out=None, skip_note=False))
+    print()
+    print('要真正改这份文件：')
+    print(f'  zotdocx renumber {os.path.basename(out)} --apply')
+    return 0
+
+
 def build_parser():
     ap = argparse.ArgumentParser(
         prog='zotdocx',
-        description='Zotero 稿件端质检与修复（只读优先，写操作需 --apply）')
+        description='Zotero 稿件端质检与修复（只读优先，写操作需 --apply）',
+        epilog='第一次用先跑 zotdocx demo：生成一份合成文档并立刻检查一遍。')
     ap.add_argument('-V', '--version', action='version', version=__version__)
     sub = ap.add_subparsers(dest='cmd')
 
+    p = sub.add_parser('demo', help='生成一份合成演示文档，并立刻跑一遍检查')
+    p.add_argument('--out', metavar='PATH', default='demo.docx', help='输出路径（默认 ./demo.docx）')
+    p.add_argument('--force', action='store_true', help='已存在时覆盖')
+    p.set_defaults(func=cmd_demo)
+
     p = sub.add_parser('status', help='体检：域结构、条目、编号、纯文本引用')
     p.add_argument('docx')
-    p.add_argument('--zotero-db', metavar='PATH', help='zotero.sqlite 路径，给了才做断链判定')
+    p.add_argument('--zotero-db', metavar='PATH',
+                   help='zotero.sqlite 路径；不给则找 ~/Zotero/zotero.sqlite，再读 ZOTERO_DB')
     p.add_argument('--show-text', action='store_true', help='打印纯文本引用所在段落（默认不打印正文）')
     p.add_argument('--json', action='store_true')
     p.set_defaults(func=cmd_status)
@@ -366,12 +411,14 @@ def build_parser():
 
     p = sub.add_parser('repair', help='修断链：把指向不存在条目的引用域重新连到正确条目')
     p.add_argument('docx')
-    p.add_argument('--zotero-db', metavar='PATH', required=True, help='zotero.sqlite 路径')
+    p.add_argument('--zotero-db', metavar='PATH',
+                   help='zotero.sqlite 路径；不给则找 ~/Zotero/zotero.sqlite，再读 ZOTERO_DB')
     p.add_argument('--apply', action='store_true', help='实际写入；默认只干跑')
     p.add_argument('--out', metavar='PATH', help='写到新文件（默认原地写，并自动备份）')
     p.set_defaults(func=cmd_repair)
 
-    p = sub.add_parser('patch', help='检查/重打 Zotero 的 omni.ja 补丁（不携带任何 Zotero 代码）')
+    p = sub.add_parser('patch', help='检查/重打 Zotero 的 omni.ja 补丁（不携带任何 Zotero 代码）',
+                       epilog='补丁片段与三步做法见仓库里的 docs/integration-patch.md')
     p.add_argument('--zotero-dir', metavar='DIR', required=True, help='Zotero 程序目录（含 app/omni.ja）')
     p.add_argument('--patched', metavar='FILE', help='已修补的 integration.js；不给则只查')
     p.add_argument('--marker', default='plainCitationFix', help='补丁标记字符串（默认 plainCitationFix）')

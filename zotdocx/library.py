@@ -9,6 +9,19 @@ import sqlite3
 import tempfile
 
 
+def default_db():
+    """按常见位置找一个 zotero.sqlite：先看 ZOTERO_DB，再看数据目录；都没有返回 None。"""
+    env = os.environ.get('ZOTERO_DB')
+    if env:
+        return os.path.expanduser(env)
+    home = os.path.expanduser('~')
+    for path in (os.path.join(home, 'Zotero', 'zotero.sqlite'),
+                 os.path.join(home, '.zotero', 'zotero', 'zotero.sqlite')):
+        if os.path.isfile(path):
+            return path
+    return None
+
+
 class Library:
     def __init__(self, db_path):
         self.path = os.path.abspath(db_path)
