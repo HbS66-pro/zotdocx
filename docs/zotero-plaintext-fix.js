@@ -1,20 +1,26 @@
-// zotdocx · Zotero Word 集成补丁片段（原创代码，MIT）
+// zotdocx · Zotero Word integration patch (original code, MIT)
 //
-// 背景：本机 Word 拒绝删除「RTF 块插入后多出来的段落标记」，Zotero 插件因此报
-//       「无法删除范围」，刷新/插入引用必失败。GB/T 7714 数字制、引用号上标的样式
-//       恰好走 RTF 路径，所以只有正文引注受影响。
+// Why: some Word installations refuse to delete the paragraph mark that Zotero's
+//      RTF block insertion leaves behind. Zotero then reports "Cannot delete
+//      range", and every refresh or new citation fails. Numeric styles such as
+//      GB/T 7714 are rendered through the RTF path, so body citations are what
+//      breaks.
 //
-// 办法：让正文引注改走纯文本写入（不触发 RTF 块插入），参考文献表的整块 RTF 不受影响。
-//       代价是正文引用号失去上标，需要在 Word 侧补回（见 README）。
+// How: when a citation renders to a plain number (\super [n]\nosupersub{}), write
+//      the text without the RTF wrapper. No RTF block is inserted, so there is
+//      nothing left to delete. The bibliography block keeps the normal RTF path.
 //
-// 用法（不改 Zotero 源码文件结构，只加两处）：
-//   1) 取出 <Zotero 目录>/app/omni.ja 里的 chrome/content/zotero/xpcom/integration.js；
-//   2) 在 setText 实现的开头加一行：
+// Cost: the body citation number loses its superscript, because \super is
+//       stripped. Set it back in Word, or leave it plain if the style allows.
+//
+// Usage (two edits, no change to the file layout):
+//   1) extract chrome/content/zotero/xpcom/integration.js from <Zotero>/app/omni.ja;
+//   2) at the start of the setText implementation, add:
 //          text = _zoteroPlainCitationFix(text);
-//   3) 在文件末尾追加本文件从 function 开始的全部内容；
-//   4) 用 zotdocx patch --patched <改好的 integration.js> --apply 写回并自检。
+//   3) append everything below from "function" to the end of that file;
+//   4) write it back with: zotdocx patch --patched <edited integration.js> --apply
 //
-// 识别特征：citeproc 为数字制渲染出的 \super [n]\nosupersub{}。
+// Recognises: citeproc output for numeric styles, i.e. \super [n]\nosupersub{}.
 function _zoteroPlainCitationFix(text) {
   if (typeof text !== "string"
       || text.indexOf("\\super") === -1
@@ -22,24 +28,26 @@ function _zoteroPlainCitationFix(text) {
     return text;
   }
   var p = text;
-  // 延迟更新样式清除控制字（形如 \ulclear{\super [1]\nosupersub{}}）
+  // Style-clear control word, e.g. \ulclear{\super [1]\nosupersub{}}
   if (p.indexOf("\\ulclear") === 0) {
     p = p.slice(8);
   }
-  // 先记录有没有整块 RTF 外壳，再决定要不要剥结尾的 }。
-  // 注意：RTF 头必须是 "\rtf" 后紧跟一个反斜杠控制字（穷尽 1~4 个反斜杠都兼容）；
-  // 若写成 [^{}]*，会把 \super [1]\nosupersub 一路吃进"头"里，实测踩过这个坑。
+  // Note whether an RTF wrapper is present before stripping the trailing brace.
+  // The header must be "\rtf" followed directly by a space or a control word. A
+  // looser pattern such as [^{}]* would consume "\super [1]\nosupersub" as part
+  // of the header, so the test is anchored on that control word.
   var hasWrapper = /^\{\\rtf\d?[ \\]/.test(p);
   if (hasWrapper) {
     p = p.replace(/^\{\\rtf(\d)?(\\[a-z]+(\d+)?)*[ ]?/, "");
     p = p.replace(/\}\s*$/, "");
   }
-  // 先整体删掉 \nosupersub{} 空组，再清掉单独出现的 \super / \nosupersub
+  // Drop empty \nosupersub{} groups first, then any lone \super / \nosupersub
   p = p.replace(/\\nosupersub\s*\{\s*\}/g, "");
   p = p.replace(/\\super\s*/g, "").replace(/\\nosupersub\s*/g, "");
   p = p.replace(/[{}]/g, "").trim();
-  // 若仍残留反斜杠，说明还有别的 RTF 控制字（斜体/粗体等）—— 保守起见不改写，
-  // 宁可这条走原来的 RTF 路径，也不要把控制字当文字写进文档。
+  // A backslash here means other RTF control words (italic, bold, ...) are still
+  // in the string. Keep the original text rather than write control words into
+  // the document as literal characters.
   if (p.indexOf("\\") === -1 && p.length) {
     return p;
   }
