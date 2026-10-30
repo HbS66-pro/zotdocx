@@ -59,7 +59,7 @@ zotdocx renumber 论文.docx --apply
 | `renumber` | 按首次引用顺序重排编号，同步表格、图题、表注中的纯文本数字 |
 | `lift` | 将正文中的纯文本引用补为活域 |
 | `repair` | 按 item key 或题名重新连接断链引用 |
-| `patch` | 检查或重打 Zotero `omni.ja` 补丁 |
+| `patch` | 检查或打上「无法删除范围」的补丁 |
 
 ## 安装
 
@@ -97,7 +97,7 @@ zotdocx lift     稿件.docx --apply --out 新文件.docx
 - 仅在 Windows 与 Word 环境验证。
 - 编号被拆分为多个 run 时不处理，列在输出中。
 - `repair` 仅依据 item key 与完整题名匹配，无法匹配时报告，不作推测。
-- `patch` 需要自行提供修补后的 `integration.js`，步骤见 [docs/integration-patch.zh-CN.md](docs/integration-patch.zh-CN.md)。
+- `patch` 会改写 Zotero `omni.ja` 里的 `integration.js`。需要对 Zotero 目录的写权限；找不到 `setText` 的常见写法时直接停下，不改任何东西。
 
 ## 测试
 
@@ -109,7 +109,13 @@ python tests/run_all.py
 
 ## 高级：Zotero 集成补丁
 
-如果 Zotero 报**「无法删除范围」**、引注域反复损坏，原因在 Zotero 一侧，不在文档里。[docs/integration-patch.zh-CN.md](docs/integration-patch.zh-CN.md) 讲了一个 `integration.js` 片段和用 `zotdocx patch` 打上去的三步。它是可选的，改的是 Zotero 而不是文档，Zotero 升级会把它覆盖掉。
+如果 Zotero 报**「无法删除范围」**、引注域反复损坏，原因在 Zotero 一侧，不在文档里：
+
+```powershell
+zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
+```
+
+它先备份 `omni.ja`，改写里面的 `integration.js`，重建并自检通过后才替换原文件。加进去的片段是本项目自己的 MIT 代码，不携带 Zotero 代码。细节、上标代价和手工兜底见 [docs/integration-patch.zh-CN.md](docs/integration-patch.zh-CN.md)。它改的是 Zotero 而不是文档，Zotero 升级会把它覆盖掉。
 
 ## 许可
 

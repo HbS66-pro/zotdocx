@@ -1,10 +1,8 @@
 # Zotero 集成补丁
 
-`zotdocx patch` 会检查 `<Zotero 程序目录>/app/omni.ja`，并能把你**自己改好**的
-`integration.js` 写回去。它不携带 Zotero 代码，不加 `--apply` 不会改动任何文件。
-
-要用的片段是本目录下的 [`zotero-plaintext-fix.js`](zotero-plaintext-fix.js)，
-下面是完整的三步。
+`zotdocx patch` 会读出 `<Zotero 程序目录>/app/omni.ja`、改写里面的
+`integration.js`，自检通过后把包写回去。它不携带 Zotero 代码：加进去的片段是本项目
+自己的 MIT 代码（`zotdocx/data/plaintext-fix.js`）。
 
 ## 什么情况下用
 
@@ -14,51 +12,51 @@
 GB/T 7714、IEEE、Nature、Vancouver 这类数字制样式正是走 RTF 路径的，所以坏的
 是正文引注；著者-出版年样式一般不受影响。
 
-## 这个片段做什么
+## 它改了哪两处
 
-Zotero 的 Word 集成有两种写法：RTF 块和纯文本。片段拦截即将写入的文本，当它是
-一个纯编号（`\super [n]\nosupersub{}`）时，剥掉 RTF 外壳，改写成纯文本。没有
-RTF 块插入，事后就没有东西要删。参考文献表仍走原来的 RTF 路径。
+`integration.js` 里只动两个地方：
 
-代价：`\super` 被一并剥掉，正文引用号失去上标。可以在 Word 里补回上标，或者按
-目标样式的要求接受平排编号。
+1. `setText` 开头加一行调用 —— `<参数> = _zoteroPlainCitationFix(<参数>);`
+2. 文件末尾追加片段
 
-## 三步
+对渲染成纯编号的引用（`\super [n]\nosupersub{}`），片段改写成纯文本、不加 RTF 外壳。
+没有 RTF 块插入，事后就没有东西要删。参考文献表仍走原来的 RTF 路径。
 
-先把 Word 关掉。
+代价：`\super` 被一并剥掉，正文引用号失去上标。可以在 Word 里补回上标，或者按目标
+样式的要求接受平排编号。
 
-### 1. 取出 integration.js
+## 怎么跑
 
-```powershell
-$omni = "$env:ProgramFiles\Zotero\app\omni.ja"
-Copy-Item $omni "$env:TEMP\omni.zip" -Force
-Expand-Archive "$env:TEMP\omni.zip" "$env:TEMP\omni" -Force
-```
-
-要改的文件是 `$env:TEMP\omni\chrome\content\zotero\xpcom\integration.js`。
-
-### 2. 改它
-
-用文本编辑器打开：
-
-- 找到 `setText` 实现，作为第一条语句加上
-
-  ```js
-  text = _zoteroPlainCitationFix(text);
-  ```
-
-- 把 `zotero-plaintext-fix.js` 里从 `function` 到文件末尾的内容追加到文件末尾
-
-### 3. 写回去
+先把 Zotero 和 Word 关掉。
 
 ```powershell
-zotdocx patch --zotero-dir "C:\Program Files\Zotero" --patched "$env:TEMP\omni\chrome\content\zotero\xpcom\integration.js"
+zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto
 ```
 
-不加 `--apply` 是干跑。加 `--apply` 时会在原处留一份 `omni.ja.bak_<时间戳>`
-备份，只替换那一个条目，重建后自检，然后由你重启 Zotero 生效。
+不加 `--apply` 只报告会改什么。要写：
+
+```powershell
+zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
+```
+
+`--apply` 会在原处留一份 `omni.ja.bak_<时间戳>` 备份，只替换那一个条目，其余部件逐字节
+保留，重建后先自检再落盘。重启 Zotero 生效。
 
 写 `Program Files` 需要管理员权限的终端。
+
+## 它停下来的时候
+
+两种情况 `--auto` 会拒绝，不会硬改：
+
+- 找不到 `setText` 的常见写法（Zotero 版本差异）—— 文件保持原样；
+- 已经有补丁标记 —— 确实要重打就加 `--force`。
+
+第一种情况可以手工打，再把改好的文件喂回去：
+
+1. 把 `app/omni.ja` 复制到可写目录，改名成 zip 后解压；
+2. 在 `setText` 第一条语句位置加上调用，再把 `zotdocx/data/plaintext-fix.js` 里从
+   `function` 到末尾的内容追加到文件末尾；
+3. `zotdocx patch --zotero-dir "C:\Program Files\Zotero" --patched <改好的 integration.js> --apply`
 
 ## 复查、撤销、重打
 
@@ -68,4 +66,4 @@ zotdocx patch --zotero-dir "C:\Program Files\Zotero"
 
 会打印包大小和补丁标记在不在。要撤销，把 `omni.ja.bak_<时间戳>` 覆盖回 `omni.ja`。
 
-Zotero 升级会覆盖 `omni.ja`，升级后先复查一次，标记没了就重做第 3 步。
+Zotero 升级会覆盖 `omni.ja`，升级后先复查，标记没了就重跑一次 `--auto --apply`。

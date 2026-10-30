@@ -1,11 +1,9 @@
 # Zotero integration patch
 
-`zotdocx patch` inspects `<Zotero directory>/app/omni.ja` and can write back an
-`integration.js` that you have edited yourself. It does not ship Zotero code, and
-it changes nothing until you pass `--apply`.
-
-The snippet it refers to is [`zotero-plaintext-fix.js`](zotero-plaintext-fix.js)
-in this directory. The steps below are the whole procedure.
+`zotdocx patch` reads `<Zotero directory>/app/omni.ja`, rewrites the
+`integration.js` inside it, and writes the package back after verifying the
+result. It carries no Zotero code: the added snippet is this project's own
+MIT-licensed JavaScript (`zotdocx/data/plaintext-fix.js`).
 
 ## When it helps
 
@@ -17,56 +15,56 @@ Numeric styles (GB/T 7714, IEEE, Nature, Vancouver) render citations through tha
 RTF path, so the body citations are the ones affected. Author–date styles usually
 are not.
 
-## What the snippet does
+## What it changes
 
-Zotero's Word integration writes citation text in two forms: an RTF block, or plain
-text. The snippet watches the text about to be written. When it is a bare number
-(`\super [n]\nosupersub{}`), it strips the RTF wrapper and writes plain text
-instead, so no RTF block is inserted and there is nothing to delete afterwards.
-The bibliography block is left on the normal RTF path.
+Two edits inside `integration.js`:
+
+1. one call at the start of `setText` — `<arg> = _zoteroPlainCitationFix(<arg>);`
+2. the snippet appended at the end of the file
+
+For a citation that renders to a bare number (`\super [n]\nosupersub{}`), the
+snippet writes plain text instead of an RTF block. No RTF block is inserted, so
+there is nothing left to delete afterwards. The bibliography block keeps the
+normal RTF path.
 
 Trade-off: `\super` is part of what gets stripped, so body citation numbers lose
 their superscript. Set superscript back in Word, or accept plain numbers if the
 target style allows them.
 
-## Steps
+## Run it
 
-Close Word first.
-
-### 1. Extract integration.js
+Close Zotero and Word first.
 
 ```powershell
-$omni = "$env:ProgramFiles\Zotero\app\omni.ja"
-Copy-Item $omni "$env:TEMP\omni.zip" -Force
-Expand-Archive "$env:TEMP\omni.zip" "$env:TEMP\omni" -Force
+zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto
 ```
 
-The file you want is `$env:TEMP\omni\chrome\content\zotero\xpcom\integration.js`.
-
-### 2. Edit it
-
-In a text editor:
-
-- find the `setText` implementation and add this as its first statement
-
-  ```js
-  text = _zoteroPlainCitationFix(text);
-  ```
-
-- append the snippet — everything from `function` to the end of
-  `zotero-plaintext-fix.js` — at the end of the file
-
-### 3. Write it back
+Without `--apply` this only reports what would change. To write:
 
 ```powershell
-zotdocx patch --zotero-dir "C:\Program Files\Zotero" --patched "$env:TEMP\omni\chrome\content\zotero\xpcom\integration.js"
+zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
 ```
 
-Without `--apply` this is a dry run. With `--apply` the original `omni.ja` is
-backed up next to itself as `omni.ja.bak_<timestamp>`, one entry is replaced, the
-rebuilt package is verified, and Zotero is restarted by you.
+`--apply` backs the package up next to itself as `omni.ja.bak_<timestamp>`,
+replaces one entry, works out the rest of the package byte for byte, and verifies
+the rebuilt archive before putting it in place. Restart Zotero to load it.
 
 Writing into `Program Files` needs an elevated shell.
+
+## If it stops
+
+`--auto` refuses instead of guessing when:
+
+- `setText` is not where it expects (an unusual Zotero version) — the file is left
+  untouched;
+- the patch marker is already present — use `--force` to reapply.
+
+For the first case, patch by hand and feed the result back:
+
+1. copy `app/omni.ja` somewhere writable, `Expand-Archive` it as a zip;
+2. add the call as the first statement of `setText`, append the snippet from
+   `zotdocx/data/plaintext-fix.js` (everything from `function` down);
+3. `zotdocx patch --zotero-dir "C:\Program Files\Zotero" --patched <edited integration.js> --apply`
 
 ## Check, undo, re-apply
 
@@ -74,8 +72,8 @@ Writing into `Program Files` needs an elevated shell.
 zotdocx patch --zotero-dir "C:\Program Files\Zotero"
 ```
 
-prints the package size and whether the patch marker is present. To undo, copy
-the `omni.ja.bak_<timestamp>` file back over `omni.ja`.
+prints the package size and whether the patch marker is present. To undo, copy the
+`omni.ja.bak_<timestamp>` file back over `omni.ja`.
 
 A Zotero update replaces `omni.ja`. After each update, run the check again and
-repeat step 3 if the marker is gone.
+re-run `--auto --apply` if the marker is gone.

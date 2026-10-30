@@ -16,9 +16,9 @@ from .renumber import renumber_xml
 from .lift import lift_xml
 from .library import Library, default_db
 from .repair import repair_xml
-from .patch import omni_path, inspect, apply_patch
+from .patch import omni_path, inspect, apply_patch, read_inner, auto_patch, MARKER
 
-__version__ = '0.2.1'
+__version__ = '0.3.0'
 
 
 def db_path(args):
@@ -309,6 +309,9 @@ def cmd_repair(args):
 def cmd_patch(args):
     import zipfile
     from .patch import sha as _sha
+    if args.auto and args.patched:
+        print('! --auto 和 --patched 只能二选一')
+        return 2
     omni = omni_path(args.zotero_dir)
     if not os.path.isfile(omni):
         print(f'! 找不到 omni.ja：{omni}')
@@ -324,9 +327,31 @@ def cmd_patch(args):
     print(f'内层    {st["inner_size"]:,} B  sha256[:16] {st["inner_sha"]}')
     print(f'补丁    标记 {args.marker!r}：{"在" if st["has_marker"] else "不在"}')
 
+    if args.auto:
+        if st['has_marker'] and not args.force:
+            print('  当前已是补丁版，无需再打；确需重打请加 --force')
+            return 0
+        try:
+            src = read_inner(omni)
+            patched = auto_patch(src)
+        except ValueError as e:
+            print(f'! {e}')
+            return 2
+        print(f'自动改写 integration.js：{st["inner_size"]:,} B → {len(patched):,} B')
+        print('        插入 1 行调用；追加补丁片段')
+        if not args.apply:
+            print('（干跑，未写入；加 --apply 生效）')
+            return 0
+        bak = apply_patch(omni, patched, args.marker)
+        st2 = inspect(omni, args.marker)
+        print(f'  备份 {bak}')
+        print(f'  已写入：条目 {st2["entries"]}；内层 sha256[:16] {st2["inner_sha"]}；标记在：{st2["has_marker"]}')
+        print('  重启 Zotero 才生效')
+        return 0
+
     if not args.patched:
         if not st['has_marker']:
-            print('  只查模式：当前是原版。要打补丁请加 --patched <已修补的 integration.js>')
+            print('  只查模式：当前是原版。要打补丁加 --auto（自动改写），或 --patched <改好的 integration.js>')
         return 0
 
     with open(args.patched, 'rb') as f:
@@ -420,8 +445,10 @@ def build_parser():
     p = sub.add_parser('patch', help='检查/重打 Zotero 的 omni.ja 补丁（不携带任何 Zotero 代码）',
                        epilog='补丁片段与三步做法见仓库里的 docs/integration-patch.md')
     p.add_argument('--zotero-dir', metavar='DIR', required=True, help='Zotero 程序目录（含 app/omni.ja）')
+    p.add_argument('--auto', action='store_true',
+                   help='自动改写 integration.js（插入调用 + 追加片段），不用手工编辑')
     p.add_argument('--patched', metavar='FILE', help='已修补的 integration.js；不给则只查')
-    p.add_argument('--marker', default='plainCitationFix', help='补丁标记字符串（默认 plainCitationFix）')
+    p.add_argument('--marker', default=MARKER, help='补丁标记字符串（默认 %s）' % MARKER)
     p.add_argument('--apply', action='store_true', help='实际写入；默认只干跑')
     p.add_argument('--force', action='store_true', help='已是补丁版时仍覆盖')
     p.set_defaults(func=cmd_patch)

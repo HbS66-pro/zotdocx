@@ -59,7 +59,7 @@ The console output is in Chinese; numbers, exit codes and `--json` are the stabl
 | `renumber` | Renumber by first citation and sync plain-text numbers in tables, captions and notes |
 | `lift` | Turn plain-text citations in the body into live fields |
 | `repair` | Relink broken citations by item key or title |
-| `patch` | Inspect or reapply the Zotero `omni.ja` patch |
+| `patch` | Check, or apply, the workaround for Zotero's "Cannot delete range" |
 
 ## Install
 
@@ -97,7 +97,7 @@ Exit code is 1 when `status` finds a problem, 0 otherwise, and 2 for usage or fi
 - Verified on Windows with Word only.
 - Citations split across several runs are reported, not lifted.
 - `repair` matches by item key or exact title; anything else is reported, never guessed.
-- `patch` requires a patched `integration.js` supplied by the user. See [docs/integration-patch.md](docs/integration-patch.md).
+- `patch` rewrites `integration.js` inside Zotero's `omni.ja`. It needs write access to the Zotero directory, and it stops without touching anything if `setText` is not where it expects.
 
 ## Tests
 
@@ -109,7 +109,13 @@ Tests run against synthetic documents built in the test process, in Chinese and 
 
 ## Advanced: Zotero integration patch
 
-If Zotero reports **Cannot delete range** and citation fields keep breaking, the cause is on the Zotero side, not in the document. [docs/integration-patch.md](docs/integration-patch.md) describes a small snippet for `integration.js` and the three steps to apply it with `zotdocx patch`. It is optional, it modifies Zotero rather than the document, and a Zotero update overwrites it.
+If Zotero reports **Cannot delete range** and citation fields keep breaking, the cause is on the Zotero side, not in the document:
+
+```powershell
+zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
+```
+
+`patch` backs up `omni.ja`, rewrites the `integration.js` inside it, and verifies the rebuilt package before replacing the original. The snippet it adds is this project's own MIT JavaScript; no Zotero code is shipped. Details, the superscript trade-off and the manual fallback are in [docs/integration-patch.md](docs/integration-patch.md). It modifies Zotero rather than the document, and a Zotero update overwrites it.
 
 ## License
 

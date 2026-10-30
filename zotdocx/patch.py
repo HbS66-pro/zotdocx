@@ -8,10 +8,19 @@
 import datetime
 import hashlib
 import os
+import re
 import shutil
 import zipfile
 
 INNER = 'chrome/content/zotero/xpcom/integration.js'
+MARKER = 'zoteroPlainCitationFix'
+SNIPPET = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'plaintext-fix.js')
+
+# setText 的两种写法：属性赋值 `setText: function (text) {` 和方法简写 `setText(text) {`
+ANCHORS = (
+    re.compile(r'setText\s*:\s*function\s*\(([^)]*)\)\s*\{'),
+    re.compile(r'(?<![.\w])setText\s*\(([^)]*)\)\s*\{'),
+)
 
 
 def omni_path(zotero_dir):
@@ -27,6 +36,44 @@ def omni_path(zotero_dir):
 
 def sha(b, n=16):
     return hashlib.sha256(b).hexdigest().upper()[:n]
+
+
+def read_inner(omni):
+    """读出包里的 integration.js 原文。"""
+    with zipfile.ZipFile(omni) as z:
+        if INNER not in z.namelist():
+            raise KeyError('包内找不到 %s' % INNER)
+        return z.read(INNER)
+
+
+def snippet_body():
+    """片段本体：从 function 到文件末尾，头部注释不带走。"""
+    with open(SNIPPET, 'r', encoding='utf-8') as f:
+        text = f.read()
+    return text[text.index('function _zoteroPlainCitationFix'):].rstrip() + '\n'
+
+
+def auto_patch(src):
+    """在 integration.js 原文里插入调用、追加片段，返回新内容；失败抛 ValueError。"""
+    text = src.decode('utf-8')
+    if MARKER in text:
+        raise ValueError('这份 integration.js 里已经含有补丁标记，可能已经打过')
+    hit = None
+    for pat in ANCHORS:
+        hit = pat.search(text)
+        if hit:
+            break
+    if not hit:
+        raise ValueError('找不到 setText 的实现，无法自动插入；请按 docs/integration-patch.md 手工打')
+    arg = hit.group(1).split(',')[0].strip()
+    if not arg:
+        raise ValueError('setText 没有参数，不确定该改写哪一行，已放弃')
+    call = '\n  %s = _zoteroPlainCitationFix(%s);' % (arg, arg)
+    out = text[:hit.end()] + call + text[hit.end():]
+    out = out.rstrip() + '\n\n' + snippet_body()
+    if MARKER not in out or '_zoteroPlainCitationFix(' not in out:
+        raise ValueError('改写结果自检未通过，已放弃（未改动任何文件）')
+    return out.encode('utf-8')
 
 
 def inspect(omni, marker):

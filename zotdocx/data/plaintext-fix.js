@@ -1,5 +1,9 @@
 // zotdocx · Zotero Word integration patch (original code, MIT)
 //
+// Shipped inside the package. `zotdocx patch --auto` appends everything from
+// "function" to the end of this file into integration.js and adds one call at
+// the start of setText. `zotdocx patch --auto` without --apply only reports.
+//
 // Why: some Word installations refuse to delete the paragraph mark that Zotero's
 //      RTF block insertion leaves behind. Zotero then reports "Cannot delete
 //      range", and every refresh or new citation fails. Numeric styles such as
@@ -12,13 +16,6 @@
 //
 // Cost: the body citation number loses its superscript, because \super is
 //       stripped. Set it back in Word, or leave it plain if the style allows.
-//
-// Usage (two edits, no change to the file layout):
-//   1) extract chrome/content/zotero/xpcom/integration.js from <Zotero>/app/omni.ja;
-//   2) at the start of the setText implementation, add:
-//          text = _zoteroPlainCitationFix(text);
-//   3) append everything below from "function" to the end of that file;
-//   4) write it back with: zotdocx patch --patched <edited integration.js> --apply
 //
 // Recognises: citeproc output for numeric styles, i.e. \super [n]\nosupersub{}.
 function _zoteroPlainCitationFix(text) {
