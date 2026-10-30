@@ -22,8 +22,9 @@ GB/T 7714、IEEE、Nature、Vancouver 这类数字制样式正是走 RTF 路径�
 对渲染成纯编号的引用（`\super [n]\nosupersub{}`），片段改写成纯文本、不加 RTF 外壳。
 没有 RTF 块插入，事后就没有东西要删。参考文献表仍走原来的 RTF 路径。
 
-代价：`\super` 被一并剥掉，正文引用号失去上标。可以在 Word 里补回上标，或者按目标
-样式的要求接受平排编号。
+代价：`\super` 被一并剥掉，正文引用号变成平排。用
+[word-superscript.zh-CN.md](word-superscript.zh-CN.md) 里的 Word 宏补回上标——装自动模式的话，
+刷新完不用管。多少个引注域还没上标，`zotdocx status` 会报。
 
 ## 怎么跑
 

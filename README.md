@@ -27,6 +27,7 @@ demo.docx
         位置：正文 2
 条目    2 个
 编号   显示 1–2；同条目多编号 0；单条目编号不符 2；多条目编号不符 0
+上标   数字制引注 2 个：整条上标 2 · 整条非上标 0 · 域内混排 0
 纯文本 正文 1 · 表格 1 · 表注图注 1 · 图题表题 1
 ```
 
@@ -54,7 +55,7 @@ The console output is in Chinese; numbers, exit codes and `--json` are the stabl
 | Command | What it does |
 |---|---|
 | `demo` | Write a synthetic sample document and check it |
-| `status` | Report field structure, item count, numbering consistency, plain-text citations |
+| `status` | Report field structure, item count, numbering consistency, superscript state, plain-text citations |
 | `heal` | Repair cross-paragraph citation fields; align stored and displayed numbers |
 | `renumber` | Renumber by first citation and sync plain-text numbers in tables, captions and notes |
 | `lift` | Turn plain-text citations in the body into live fields |
@@ -98,6 +99,7 @@ Exit code is 1 when `status` finds a problem, 0 otherwise, and 2 for usage or fi
 - Citations split across several runs are reported, not lifted.
 - `repair` matches by item key or exact title; anything else is reported, never guessed.
 - `patch` rewrites `integration.js` inside Zotero's `omni.ja`. It needs write access to the Zotero directory, and it stops without touching anything if `setText` is not where it expects.
+- `patch` also flattens body citation numbers, because it drops the `\super` control word. The Word-side macro in [docs/word-superscript.md](docs/word-superscript.md) puts the superscript back; `status` reports how many citation fields still lack it.
 
 ## Tests
 
@@ -116,6 +118,12 @@ zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
 ```
 
 `patch` backs up `omni.ja`, rewrites the `integration.js` inside it, and verifies the rebuilt package before replacing the original. The snippet it adds is this project's own MIT JavaScript; no Zotero code is shipped. Details, the superscript trade-off and the manual fallback are in [docs/integration-patch.md](docs/integration-patch.md). It modifies Zotero rather than the document, and a Zotero update overwrites it.
+
+Because the patched write path is plain text, body citation numbers come out flat. The Word-side macro in [docs/word-superscript.md](docs/word-superscript.md) sets them back to superscript, and keeps them there while you refresh. `zotdocx status` tells you where the document stands:
+
+```
+上标   数字制引注 32 个：整条上标 32 · 整条非上标 0 · 域内混排 0
+```
 
 ## License
 

@@ -29,6 +29,7 @@ demo.docx
         位置：正文 2
 条目    2 个
 编号   显示 1–2；同条目多编号 0；单条目编号不符 2；多条目编号不符 0
+上标   数字制引注 2 个：整条上标 2 · 整条非上标 0 · 域内混排 0
 纯文本 正文 1 · 表格 1 · 表注图注 1 · 图题表题 1
 ```
 
@@ -54,7 +55,7 @@ zotdocx renumber 论文.docx --apply
 | 命令 | 功能 |
 |---|---|
 | `demo` | 生成合成示例文档并检查一遍 |
-| `status` | 检查域结构、条目、编号与纯文本引用分布 |
+| `status` | 检查域结构、条目、编号、上标状态与纯文本引用分布 |
 | `heal` | 修复跨段落引注域，对齐域内编号与显示编号 |
 | `renumber` | 按首次引用顺序重排编号，同步表格、图题、表注中的纯文本数字 |
 | `lift` | 将正文中的纯文本引用补为活域 |
@@ -98,6 +99,7 @@ zotdocx lift     稿件.docx --apply --out 新文件.docx
 - 编号被拆分为多个 run 时不处理，列在输出中。
 - `repair` 仅依据 item key 与完整题名匹配，无法匹配时报告，不作推测。
 - `patch` 会改写 Zotero `omni.ja` 里的 `integration.js`。需要对 Zotero 目录的写权限；找不到 `setText` 的常见写法时直接停下，不改任何东西。
+- `patch` 同时会把正文引用号压平（`\super` 被剥掉）。用 [docs/word-superscript.zh-CN.md](docs/word-superscript.zh-CN.md) 里的 Word 宏补回上标；`status` 会报告还有多少个引注域没有上标。
 
 ## 测试
 
@@ -116,6 +118,12 @@ zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
 ```
 
 它先备份 `omni.ja`，改写里面的 `integration.js`，重建并自检通过后才替换原文件。加进去的片段是本项目自己的 MIT 代码，不携带 Zotero 代码。细节、上标代价和手工兜底见 [docs/integration-patch.zh-CN.md](docs/integration-patch.zh-CN.md)。它改的是 Zotero 而不是文档，Zotero 升级会把它覆盖掉。
+
+补丁走的是纯文本写入，所以正文引用号会变成平排。用 [docs/word-superscript.zh-CN.md](docs/word-superscript.zh-CN.md) 里的 Word 宏补回上标，装好巡检之后刷新也不会掉。文档当前什么状态，看 `zotdocx status`：
+
+```
+上标   数字制引注 32 个：整条上标 32 · 整条非上标 0 · 域内混排 0
+```
 
 ## 许可
 

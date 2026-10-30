@@ -95,6 +95,7 @@ def cmd_status(args):
                 broken.setdefault(k, []).append(i)
 
     # ---------------- 输出 ----------------
+    sup_num, sup_all, sup_none, sup_mix = doc.sup_summary()
     base = os.path.basename(args.docx)
     bad = bool(broken) or mismatch > 0 or any(f.cross for f in items)
     if args.json:
@@ -105,6 +106,8 @@ def cmd_status(args):
             'cross_item': sum(1 for f in items if f.cross),
             'items': len(ids_seen),
             'plain': dict(plain_by_ctx),
+            'superscript': {'numeric': sup_num, 'all': sup_all,
+                            'none': sup_none, 'mixed': sup_mix},
             'broken': {k: [str(x) for x in v] for k, v in broken.items()},
         }, ensure_ascii=False, indent=2))
         return 1 if bad else 0
@@ -119,6 +122,11 @@ def cmd_status(args):
         '（' + ' · '.join(f'{k} {v}' for k, v in id_kinds.items()) + '）' if lib else ''))
     print(f'编号   显示 {all_nums[0] if all_nums else 0}–{all_nums[-1] if all_nums else 0}'
           f'；同条目多编号 {len(multi_num_ids)}；单条目编号不符 {mismatch}；多条目编号不符 {multi_mismatch}')
+    if sup_num:
+        print(f'上标   数字制引注 {sup_num} 个：整条上标 {sup_all} · '
+              f'整条非上标 {sup_none} · 域内混排 {sup_mix}')
+        if not sup_all:
+            print('        引用号没有上标：patch 之后要靠 Word 宏补回，见 docs/word-superscript.md')
     print('纯文本 ' + ' · '.join(f'{k} {v}' for k, v in plain_by_ctx.items()))
     if lib is None and not getattr(args, 'no_lib', False):
         print('断链    跳过（没找到 zotero.sqlite；用 --zotero-db 或 ZOTERO_DB 指一个）')
@@ -347,6 +355,7 @@ def cmd_patch(args):
         print(f'  备份 {bak}')
         print(f'  已写入：条目 {st2["entries"]}；内层 sha256[:16] {st2["inner_sha"]}；标记在：{st2["has_marker"]}')
         print('  重启 Zotero 才生效')
+        print('  下一步：正文引用号会变成平排，回 Word 跑一次上标宏，见 docs/word-superscript.zh-CN.md')
         return 0
 
     if not args.patched:
@@ -370,6 +379,7 @@ def cmd_patch(args):
     print(f'  备份 {bak}')
     print(f'  已写入：条目 {st2["entries"]}；内层 sha256[:16] {st2["inner_sha"]}；标记在：{st2["has_marker"]}')
     print('  重启 Zotero 才生效')
+    print('  下一步：正文引用号会变成平排，回 Word 跑一次上标宏，见 docs/word-superscript.zh-CN.md')
     return 0
 
 

@@ -1,0 +1,18 @@
+Option Explicit
+' =============================================================================
+' zotdocx · 粘到 Normal.dotm 的 ThisDocument 里
+'
+' 作用：Word 每次启动执行 AutoExec，借此挂上应用事件钩子并启动上标巡检。
+' =============================================================================
+
+Private Sub AutoExec()
+    On Error Resume Next
+    WordEventsInit
+    Err.Clear
+End Sub
+
+Private Sub Document_Open()
+    On Error Resume Next
+    WordEventsKick
+    Err.Clear
+End Sub

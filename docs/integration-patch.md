@@ -27,9 +27,10 @@ snippet writes plain text instead of an RTF block. No RTF block is inserted, so
 there is nothing left to delete afterwards. The bibliography block keeps the
 normal RTF path.
 
-Trade-off: `\super` is part of what gets stripped, so body citation numbers lose
-their superscript. Set superscript back in Word, or accept plain numbers if the
-target style allows them.
+Trade-off: `\super` is part of what gets stripped, so body citation numbers come
+out flat. Put the superscript back with the Word-side macro in
+[word-superscript.md](word-superscript.md) — its automatic mode keeps it in place
+across refreshes. `zotdocx status` reports how many citation fields still lack it.
 
 ## Run it
 

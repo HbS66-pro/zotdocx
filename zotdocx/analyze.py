@@ -15,6 +15,7 @@ NS = {'w': W}
 _Q = lambda n: '{%s}%s' % (W, n)
 TAG_P, TAG_TBL, TAG_FLD = _Q('p'), _Q('tbl'), _Q('fldChar')
 TAG_INSTR, TAG_T = _Q('instrText'), _Q('t')
+TAG_R = _Q('r')
 
 BODY, TABLE, CAPTION, NOTE, BIBLIO = 'body', 'table', 'caption', 'note', 'biblio'
 CTX_CN = {BODY: '正文', TABLE: '表格', CAPTION: '图题表题', NOTE: '表注图注', BIBLIO: '参考文献表'}
@@ -38,10 +39,23 @@ class Field:
     ids: list = field(default_factory=list)
     display: str = ''
     nums: list = field(default_factory=list)
+    sup: int = 0              # 域结果里带上标的文字 run 数
+    nonsup: int = 0           # 域结果里不带上标的文字 run 数
 
     @property
     def cross(self):
         return self.p0 != self.p1
+
+    @property
+    def sup_state(self):
+        """'all' 整条上标 / 'none' 整条非上标 / 'mixed' 域内混排 / '' 没有文字。"""
+        if self.sup and self.nonsup:
+            return 'mixed'
+        if self.sup:
+            return 'all'
+        if self.nonsup:
+            return 'none'
+        return ''
 
     @property
     def plain_citation(self):
@@ -83,6 +97,12 @@ def _in_table(el):
     return False
 
 
+def _is_sup(run):
+    """这个 run 是不是上标（<w:rPr><w:vertAlign w:val="superscript"/></w:rPr>）。"""
+    va = run.find('w:rPr/w:vertAlign', NS)
+    return va is not None and va.get(_Q('val')) == 'superscript'
+
+
 def _json_of(instr):
     m = re.search(r'CSL_CITATION\s*(\{.*\})\s*$', instr.strip(), re.S)
     if not m:
@@ -114,6 +134,7 @@ class Document:
     def _walk(self):
         stack = []
         buf, depth, cur = [], 0, -1
+        run_sup = False
         for el in self.body.iter():
             if el.tag == TAG_P:
                 cur += 1
@@ -123,7 +144,8 @@ class Document:
                 t = el.get(_Q('fldCharType'))
                 if t == 'begin':
                     stack.append({'instr': [], 'disp': [], 'sep': False,
-                                  'p0': cur, 'table': _in_table(el)})
+                                  'p0': cur, 'table': _in_table(el),
+                                  'sup': 0, 'nonsup': 0})
                     depth += 1
                 elif t == 'separate' and stack:
                     stack[-1]['sep'] = True
@@ -138,15 +160,22 @@ class Document:
                     self.fields.append(Field(
                         idx=len(self.fields), kind=kind, ctx=None,
                         p0=f['p0'], p1=cur, instr=instr, data=data, ids=ids,
-                        display=''.join(f['disp'])))
+                        display=''.join(f['disp']),
+                        sup=f['sup'], nonsup=f['nonsup']))
             elif el.tag == TAG_INSTR:
                 if stack:
                     stack[-1]['instr'].append(el.text or '')
                 # 域代码不是可见文字，不进 para_text
+            elif el.tag == TAG_R:
+                run_sup = _is_sup(el)
             elif el.tag == TAG_T:
                 txt = el.text or ''
                 if stack and stack[-1]['sep']:
                     stack[-1]['disp'].append(txt)
+                    if run_sup:
+                        stack[-1]['sup'] += 1
+                    else:
+                        stack[-1]['nonsup'] += 1
                 if cur >= 0:
                     self.para_text[cur].append(txt)
 
@@ -207,3 +236,16 @@ class Document:
 
     def items(self):
         return [f for f in self.fields if f.kind == 'item']
+
+    def numeric_items(self):
+        """显示成 [n] 的引注域——只有这种才谈得上该不该上标。"""
+        return [f for f in self.items() if NUM_RE.search(f.display or '')]
+
+    def sup_summary(self):
+        """返回 (数字制引注数, 整条上标, 整条非上标, 域内混排)。"""
+        num = self.numeric_items()
+        return (len(num),
+                sum(1 for f in num if f.sup_state == 'all'),
+                sum(1 for f in num if f.sup_state == 'none'),
+                sum(1 for f in num if f.sup_state == 'mixed'))
+
