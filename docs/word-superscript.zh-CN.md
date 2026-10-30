@@ -10,23 +10,24 @@
 
 | 方式 | 装什么 | 什么时候补 |
 |---|---|---|
-| 手动 | 只要标准模块 `ZoteroFix.bas` | 定稿前按 `Alt+F8` 跑一次 |
-| 自动 | 加上类模块 `WordEvents.cls` 和 `ThisDocument` 里的 `AutoExec` | 每 5 秒巡检一次，缺上标就补，刷新完不用管 |
+| 手动 | 只要标准模块 `ZoteroFixManual.bas` | 定稿前按 `Alt+F8` 跑一次 |
+| 自动 | 再加 `ZoteroFixAuto.bas`、类模块 `WordEvents.cls` 和 `ThisDocument` 里的 `AutoExec` | 每 5 秒巡检一次，缺上标就补，刷新完不用管 |
 
-手动版更简单，但每刷新一次引用就要重跑一次宏。自动版装一次，之后随便刷新。
+手动版更简单，但刷新之后如果编号又变平排，得再跑一次宏。自动版装一次，之后随便刷新。
 
 ## 安装（写进 Normal.dotm，全局生效）
 
 装之前：备份 `%APPDATA%\Microsoft\Templates\Normal.dotm`，并关掉所有 Word 窗口。
 
 1. 打开 Word，按 `Alt+F11` 进 VBA 编辑器。
-2. 左侧工程树里右键 `Normal` → **插入 → 模块**，把 `docs/macros/ZoteroFix.bas` 的全部内容粘进去。
-3. 右键 `Normal` → **插入 → 类模块**，把 `docs/macros/WordEvents.cls` 的内容粘进去；在属性窗口（`F4`）把类模块的名字改成 `WordEvents`。
-4. 双击工程树里的 `ThisDocument`，把 `docs/macros/ThisDocument.txt` 的内容粘进去。
-5. 按 `Ctrl+S` 或直接关掉 VBA 编辑器，Word 会问是否保存到 Normal.dotm，选**是**。
-6. 重启 Word。
+2. 左侧工程树里右键 `Normal` → **插入 → 模块**，把 `docs/macros/ZoteroFixManual.bas` 的全部内容粘进去。
+3. 再右键 `Normal` → **插入 → 模块**，粘 `docs/macros/ZoteroFixAuto.bas`。
+4. 右键 `Normal` → **插入 → 类模块**，粘 `docs/macros/WordEvents.cls`；在属性窗口（`F4`）把类模块的名字改成 `WordEvents`。
+5. 双击工程树里的 `ThisDocument`，粘 `docs/macros/ThisDocument.txt` 的内容。
+6. 按 `Ctrl+S` 或直接关掉 VBA 编辑器，Word 会问是否保存到 Normal.dotm，选**是**。
+7. 重启 Word。
 
-只想要手动版的话，第 1–2 步做完就够了，跳过 3–6。
+只想要手动版的话，做完第 1–2 步就够了，跳过 3–7。**手动版不要单独装 `ZoteroFixAuto.bas`**，它引用了 `WordEvents` 类，缺类模块会编译不过。
 
 **用粘贴，不要用「导入文件」**：`.bas` 是 UTF-8，VBE 的导入按系统编码读，中文注释会乱码。
 
