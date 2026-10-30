@@ -20,6 +20,9 @@ from .patch import omni_path, inspect, apply_patch, read_inner, auto_patch, MARK
 
 __version__ = '0.3.0'
 
+# 上标那套（Word 宏）只在仓库里有，pip 装的包里没有，所以提示给完整链接
+SUP_DOC = 'https://github.com/HbS66-pro/zotdocx/blob/main/docs/word-superscript.zh-CN.md'
+
 
 def db_path(args):
     """--zotero-db 优先，其次 ZOTERO_DB 环境变量，再次常见安装位置；都没有返回 None。"""
@@ -126,7 +129,7 @@ def cmd_status(args):
         print(f'上标   数字制引注 {sup_num} 个：整条上标 {sup_all} · '
               f'整条非上标 {sup_none} · 域内混排 {sup_mix}')
         if not sup_all:
-            print('        引用号没有上标：patch 之后要靠 Word 宏补回，见 docs/word-superscript.md')
+            print(f'        引用号没有上标：patch 之后要靠 Word 宏补回，见 {SUP_DOC}')
     print('纯文本 ' + ' · '.join(f'{k} {v}' for k, v in plain_by_ctx.items()))
     if lib is None and not getattr(args, 'no_lib', False):
         print('断链    跳过（没找到 zotero.sqlite；用 --zotero-db 或 ZOTERO_DB 指一个）')
@@ -355,7 +358,7 @@ def cmd_patch(args):
         print(f'  备份 {bak}')
         print(f'  已写入：条目 {st2["entries"]}；内层 sha256[:16] {st2["inner_sha"]}；标记在：{st2["has_marker"]}')
         print('  重启 Zotero 才生效')
-        print('  下一步：正文引用号会变成平排，回 Word 跑一次上标宏，见 docs/word-superscript.zh-CN.md')
+        print(f'  下一步：正文引用号会变成平排，回 Word 跑一次上标宏，见 {SUP_DOC}')
         return 0
 
     if not args.patched:
@@ -379,7 +382,7 @@ def cmd_patch(args):
     print(f'  备份 {bak}')
     print(f'  已写入：条目 {st2["entries"]}；内层 sha256[:16] {st2["inner_sha"]}；标记在：{st2["has_marker"]}')
     print('  重启 Zotero 才生效')
-    print('  下一步：正文引用号会变成平排，回 Word 跑一次上标宏，见 docs/word-superscript.zh-CN.md')
+    print(f'  下一步：正文引用号会变成平排，回 Word 跑一次上标宏，见 {SUP_DOC}')
     return 0
 
 
