@@ -6,8 +6,6 @@
 
 A command-line tool for repairing Zotero citation fields in Word documents. It works on the citation fields inside a `.docx`; it does not modify the Zotero library and does not re-typeset the document.
 
-![zotdocx status and renumber](docs/images/status.png)
-
 ## Problems it handles
 
 - Citation fields split across paragraphs, with the field end in the next paragraph

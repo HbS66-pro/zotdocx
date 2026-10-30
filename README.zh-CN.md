@@ -6,8 +6,6 @@
 
 修复 Word 文档中 Zotero 引注域的命令行工具。只处理 `.docx` 内的引用域，不修改 Zotero 文献库，不重新排版。
 
-![zotdocx status 与 renumber](docs/images/status.png)
-
 ## 处理的问题
 
 - 引注域跨段落，域尾落在下一段
