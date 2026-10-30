@@ -111,7 +111,7 @@ python tests/run_all.py
 
 ## 高级：Zotero 集成补丁
 
-如果 Zotero 报**「无法删除范围」**、引注域反复损坏，原因在 Zotero 一侧，不在文档里：
+如果 Zotero 报「无法删除范围」、引注域反复损坏，原因在 Zotero 一侧，不在文档里：
 
 ```powershell
 zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
@@ -119,7 +119,7 @@ zotdocx patch --zotero-dir "C:\Program Files\Zotero" --auto --apply
 
 它先备份 `omni.ja`，改写里面的 `integration.js`，重建并自检通过后才替换原文件。加进去的片段是本项目自己的 MIT 代码，不携带 Zotero 代码。细节、上标代价和手工兜底见 [docs/integration-patch.zh-CN.md](docs/integration-patch.zh-CN.md)。它改的是 Zotero 而不是文档，Zotero 升级会把它覆盖掉。
 
-补丁走的是纯文本写入，所以正文引用号会变成平排。用 [docs/word-superscript.zh-CN.md](docs/word-superscript.zh-CN.md) 里的 Word 宏补回上标，装好巡检之后刷新也不会掉。文档当前什么状态，看 `zotdocx status`：
+补丁走的是纯文本写入，所以正文引用号会变成平排。用 [docs/word-superscript.zh-CN.md](docs/word-superscript.zh-CN.md) 里的 Word 宏补回上标，装好巡检之后刷新不用管。文档当前什么状态，看 `zotdocx status`：
 
 ```
 上标   数字制引注 32 个：整条上标 32 · 整条非上标 0 · 域内混排 0
