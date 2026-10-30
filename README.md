@@ -1,1 +1,94 @@
-# zotdocx修复 Word 文档中 Zotero 引注域的命令行工具。只处理 `.docx` 内的引用域，不修改 Zotero 文献库，不重新排版。## 处理的问题- 引注域跨段落，域尾落在下一段- 域内编号与页面显示的编号不一致- 编号顺序与实际引用顺序不符- 正文中的纯文本引用（`[3]`、`[12,13]`）未上宏- 引用域指向的条目已从文献库删除（断链）- Zotero 刷新时报「无法删除范围」## 命令| 命令 | 功能 ||---|---|| `status` | 检查域结构、条目、编号与纯文本引用分布 || `heal` | 修复跨段落引注域，对齐域内编号与显示编号 || `renumber` | 按首次引用顺序重排编号，同步表格、图题、表注中的纯文本数字 || `lift` | 将正文中的纯文本引用补为活域 || `repair` | 按 item key 或题名重新连接断链引用 || `patch` | 检查或重打 Zotero `omni.ja` 补丁 |## 安装```bashpython -m pip install -e .```需要 Python 3.9 及以上，依赖 `lxml`。## 使用状态检查为只读操作：```bashzotdocx status 稿件.docx --zotero-db <zotero.sqlite 路径>``````稿件.docx  域      115 = 引注 114 + 书目 1 + 其他 0  条目    76 个  编号    显示 1–76；同条目多编号 0；单条目编号不符 2  纯文本 表格 27 · 表注图注 5 · 参考文献表 75```存在未通过的检查项时退出码为 1，无问题时为 0。写入操作默认只做检查，不落盘：```bashzotdocx heal     稿件.docx            # 输出将要修改的内容zotdocx heal     稿件.docx --apply    # 写入，原文件备份为 *.bak_<时间戳>zotdocx renumber 稿件.docx --applyzotdocx lift     稿件.docx --apply --out 新文件.docx```## 处理范围- 仅替换 docx 包内的 `word/document.xml`，其他部件保持不变。- 表格、图题、表注中的编号保持纯文本，`renumber` 只同步数字，不转为活域。- 文献库只读，查询前复制到临时目录。- 不修改正文文字，不排版，不做定稿处理。## 限制- 仅支持数字型 CSL 样式（如 GB/T 7714）。- 仅在 Windows 与 Word 环境验证。- 编号被拆分为多个 run 时不处理，列在输出中。- `repair` 仅依据 item key 与完整题名匹配，无法匹配时报告，不作推测。- `patch` 需要自行提供修补后的 `integration.js`。## 测试```bashpython tests/run_all.py```测试使用 `tests/make_fixture.py` 生成的合成文档，不含真实论文或文献库内容。## 许可MIT 协议，见 [LICENSE](LICENSE)。*English: a CLI that repairs Zotero citation fields in Word documents — cross-paragraph fields, inconsistent numbering, plain-text citations, broken links, and the `omni.ja` patch. MIT licensed.*
+# zotdocx
+
+[![tests](https://github.com/HbS66-pro/zotdocx/actions/workflows/tests.yml/badge.svg)](https://github.com/HbS66-pro/zotdocx/actions/workflows/tests.yml)
+
+**English** | [中文](README.zh-CN.md)
+
+A command-line tool for repairing Zotero citation fields in Word documents. It works on the citation fields inside a `.docx`; it does not modify the Zotero library and does not re-typeset the document.
+
+![zotdocx status and renumber](docs/images/status.png)
+
+## Problems it handles
+
+- Citation fields split across paragraphs, with the field end in the next paragraph
+- Numbers stored in a field that disagree with the numbers shown on the page
+- Numbering that does not follow the order of first citation
+- Plain-text citations in the body (`[3]`, `[12,13]`) that are not live fields
+- Citation fields pointing to items removed from the library (broken links)
+- Zotero's "Cannot delete range" error when refreshing
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `status` | Report field structure, item count, numbering consistency, plain-text citations |
+| `heal` | Repair cross-paragraph citation fields; align stored and displayed numbers |
+| `renumber` | Renumber by first citation and sync plain-text numbers in tables, captions and notes |
+| `lift` | Turn plain-text citations in the body into live fields |
+| `repair` | Relink broken citations by item key or title |
+| `patch` | Inspect or reapply the Zotero `omni.ja` patch |
+
+## Install
+
+```bash
+python -m pip install -e .
+```
+
+Python 3.9 or later. The only dependency is `lxml`.
+
+## Usage
+
+`status` is read-only:
+
+```bash
+zotdocx status manuscript.docx --zotero-db <path to zotero.sqlite>
+```
+
+```
+manuscript.docx
+  域      115 = 引注 114 + 书目 1 + 其他 0
+  条目    76 个
+  编号    显示 1–76；同条目多编号 0；单条目编号不符 2
+  纯文本 表格 27 · 表注图注 5 · 参考文献表 75
+```
+
+Console labels are currently Chinese; the numbers and the exit code are what scripts should rely on.
+
+Exit code is 1 when any check fails, 0 when everything is clean.
+
+Write commands run as a dry run by default:
+
+```bash
+zotdocx heal     manuscript.docx            # print what would change
+zotdocx heal     manuscript.docx --apply    # write, original backed up as *.bak_<timestamp>
+zotdocx renumber manuscript.docx --apply
+zotdocx lift     manuscript.docx --apply --out new.docx
+```
+
+## Scope
+
+- Only `word/document.xml` is replaced; every other part of the package is preserved byte for byte.
+- Numbers in table cells, captions and notes stay plain text; `renumber` syncs the digits and never turns them into fields.
+- Caption, note and bibliography headings are recognised in both Chinese (图 / 表 / 注 / 参考文献) and English (Table / Figure / Note / References).
+- The Zotero database is opened read-only, from a temporary copy.
+- No wording changes, no layout, no conversion to final plain-text manuscript.
+
+## Limitations
+
+- Numeric CSL styles only (GB/T 7714, IEEE, Nature, Vancouver). Author–date styles such as APA or Harvard have no numbers to reorder, so `renumber` and `lift` do not apply.
+- Verified on Windows with Word only.
+- Citations split across several runs are reported, not lifted.
+- `repair` matches by item key or exact title; anything else is reported, never guessed.
+- `patch` requires a patched `integration.js` supplied by the user.
+
+## Tests
+
+```bash
+python tests/run_all.py
+```
+
+Tests run against synthetic documents generated by `tests/make_fixture.py`, in Chinese and English. No real manuscript or library content is included.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
